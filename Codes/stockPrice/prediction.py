@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for headless environments
 import matplotlib.pyplot as plt
 
 stockID = '2330'
@@ -69,14 +71,15 @@ predicted_stock_price = np.delete(predicted_stock_price, [1, 2, 3, 4], axis=1)
 
 
 real_stock_price = test_set.iloc[timesteps:lenOfReal+1,1:2].values
-plt.plot(real_stock_price, color = 'red', label = 'Real Stock Price')
-plt.plot(predicted_stock_price, color = 'blue', label = 'Predicted Stock Price')
-plt.title('Stock Price Prediction')
+plt.figure(figsize=(12, 6))
+plt.plot(real_stock_price, color = 'red', label = 'Real Stock Price', linewidth=2)
+plt.plot(predicted_stock_price, color = 'blue', label = 'Predicted Stock Price', linewidth=2)
+plt.title('Stock Price Prediction - Test Set')
 plt.xlabel('Time')
 plt.ylabel('Stock Price')
 plt.legend()
-plt.show()
-plt.savefig('pic1.png')
+plt.savefig('pic1.png', dpi=150, bbox_inches='tight')
+plt.close()
 
 
 real_stock_price_train = pd.read_csv(traindata)
@@ -89,15 +92,18 @@ predicted_stock_price_train = sc.inverse_transform(predicted_stock_price_train)
 predicted_stock_price_train = np.delete(predicted_stock_price_train, [1, 2, 3, 4], axis=1)
 
 np.savetxt(stockID + '.csv', predicted_stock_price, fmt="%.3f", delimiter=",")
+print(f"\nPredicted prices saved to {stockID}.csv")
 
-plt.plot(real_stock_price_train, color = 'red', label = 'Real Stock Price')
-plt.plot(predicted_stock_price_train, color = 'blue', label = 'Predicted Stock Price')
-plt.title('Stock Price Prediction')
+plt.figure(figsize=(12, 6))
+plt.plot(real_stock_price_train, color = 'red', label = 'Real Stock Price', linewidth=2)
+plt.plot(predicted_stock_price_train, color = 'blue', label = 'Predicted Stock Price', linewidth=2)
+plt.title('Stock Price Prediction - Training Set')
 plt.xlabel('Time')
 plt.ylabel('Stock Price')
 plt.legend()
-plt.show()
-plt.savefig('pic2.png')
+plt.savefig('pic2.png', dpi=150, bbox_inches='tight')
+plt.close()
+print("Visualization plots saved: pic1.png (test set) and pic2.png (training set)")
 
 
 import math
