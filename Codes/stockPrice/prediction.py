@@ -4,11 +4,20 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for headless environments
 import matplotlib.pyplot as plt
 
-stockID = '2330'
+# Indian Stock Market Configuration
+# Using Reliance Industries Limited - India's largest company by market cap
+# Similar to how Taiwan's TSMC (2330) was used in the original
+stockID = 'RELIANCE'
 traindata = 'data/'+ stockID + '_2015_2019_ochlv.csv'
 testdata = 'data/'+ stockID +'_202001_03_ochlv.csv'
-print('traindata = ' + traindata)
-print('testdata = ' + testdata)
+print('=' * 60)
+print('Indian Stock Market - LSTM Price Prediction')
+print('=' * 60)
+print(f'Stock: {stockID} (Reliance Industries Limited)')
+print(f'Training data: {traindata}')
+print(f'Test data: {testdata}')
+print('='* 60)
+print()
 
 dataNum = 5
 timesteps = 20
@@ -74,12 +83,13 @@ real_stock_price = test_set.iloc[timesteps:lenOfReal+1,1:2].values
 plt.figure(figsize=(12, 6))
 plt.plot(real_stock_price, color = 'red', label = 'Real Stock Price', linewidth=2)
 plt.plot(predicted_stock_price, color = 'blue', label = 'Predicted Stock Price', linewidth=2)
-plt.title('Stock Price Prediction - Test Set')
+plt.title(f'{stockID} Stock Price Prediction - Test Set (Indian Market)')
 plt.xlabel('Time')
-plt.ylabel('Stock Price')
+plt.ylabel('Stock Price (INR)')
 plt.legend()
 plt.savefig('pic1.png', dpi=150, bbox_inches='tight')
 plt.close()
+print(f"\nVisualization saved: pic1.png")
 
 
 real_stock_price_train = pd.read_csv(traindata)
@@ -97,22 +107,33 @@ print(f"\nPredicted prices saved to {stockID}.csv")
 plt.figure(figsize=(12, 6))
 plt.plot(real_stock_price_train, color = 'red', label = 'Real Stock Price', linewidth=2)
 plt.plot(predicted_stock_price_train, color = 'blue', label = 'Predicted Stock Price', linewidth=2)
-plt.title('Stock Price Prediction - Training Set')
+plt.title(f'{stockID} Stock Price Prediction - Training Set (Indian Market)')
 plt.xlabel('Time')
-plt.ylabel('Stock Price')
+plt.ylabel('Stock Price (INR)')
 plt.legend()
 plt.savefig('pic2.png', dpi=150, bbox_inches='tight')
 plt.close()
-print("Visualization plots saved: pic1.png (test set) and pic2.png (training set)")
+print("Visualization saved: pic2.png")
 
 
 import math
 from sklearn.metrics import mean_squared_error
 
 rmseTest = math.sqrt(mean_squared_error(real_stock_price, predicted_stock_price))
-print("RMSE_test = " + str(rmseTest))
 rmseTrain = math.sqrt(mean_squared_error(real_stock_price_train, predicted_stock_price_train))
-print("RMSE_train = " + str(rmseTrain))
+
+print()
+print('=' * 60)
+print('Performance Metrics')
+print('=' * 60)
+print(f"RMSE (Test Set):     {rmseTest:.4f} INR")
+print(f"RMSE (Training Set): {rmseTrain:.4f} INR")
+print('=' * 60)
+print()
+print(f"✓ Model trained successfully for {stockID} (Indian Market)")
+print(f"✓ Predictions saved to {stockID}.csv")
+print("✓ Visualizations saved to pic1.png and pic2.png")
+print()
 
 
 
