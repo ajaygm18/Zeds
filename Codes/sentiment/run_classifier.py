@@ -25,6 +25,9 @@ import modeling
 import optimization
 import tokenization
 import tensorflow as tf
+# Enable TensorFlow 1.x compatibility mode
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import pandas as pd
 
 flags = tf.flags

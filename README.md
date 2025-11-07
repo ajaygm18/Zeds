@@ -160,6 +160,28 @@ It includes:
 - `bert_model.ckpt.*` - Model weights
 - `vocab.txt` - Chinese vocabulary (21,128 tokens)
 
+## Important: TensorFlow Version Compatibility
+
+### For Sentiment Analysis (BERT)
+⚠️ The sentiment analysis code was originally written for **TensorFlow 1.x** and uses features like `tf.contrib` that are not available in TensorFlow 2.x.
+
+**Recommended Setup:**
+```bash
+# For sentiment analysis, use TensorFlow 1.15
+pip install tensorflow==1.15.0
+```
+
+**Alternative (if TensorFlow 1.15 not available on your system):**
+- Use a separate virtual environment
+- Use Docker with TensorFlow 1.15 image
+- Or migrate the code to TensorFlow 2.x (requires code refactoring)
+
+### For Stock Price Prediction
+✅ Works perfectly with **TensorFlow 2.x** (tested with 2.20.0)
+```bash
+pip install tensorflow>=2.16.0
+```
+
 ## Usage
 
 ### Sentiment Analysis
