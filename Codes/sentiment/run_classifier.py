@@ -24,10 +24,12 @@ import os
 import modeling
 import optimization
 import tokenization
-import tensorflow as tf
 # Enable TensorFlow 1.x compatibility mode
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+# Alias for estimator (in TF2 it's tf.compat.v1.estimator but accessed as tf.estimator in TF1 code)
+if not hasattr(tf, 'estimator'):
+    tf.estimator = tf.compat.v1.estimator
 import pandas as pd
 
 flags = tf.flags
@@ -682,8 +684,8 @@ def file_based_convert_examples_to_features(
 
 
 def file_based_input_fn_builder(input_file, seq_length, is_training,
-                                drop_remainder):
-  """Creates an `input_fn` closure to be passed to TPUEstimator."""
+                                drop_remainder, batch_size):
+  """Creates an `input_fn` closure to be passed to Estimator."""
 
   name_to_features = {
       "input_ids": tf.FixedLenFeature([seq_length], tf.int64),
@@ -707,9 +709,8 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
 
     return example
 
-  def input_fn(params):
+  def input_fn():
     """The actual input function."""
-    batch_size = params["batch_size"]
 
     # For training, we want a lot of parallel reading and shuffling.
     # For eval, we want no shuffling and parallel reading doesn't matter.
@@ -718,11 +719,8 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
       d = d.repeat()
       d = d.shuffle(buffer_size=100)
 
-    d = d.apply(
-        tf.contrib.data.map_and_batch(
-            lambda record: _decode_record(record, name_to_features),
-            batch_size=batch_size,
-            drop_remainder=drop_remainder))
+    d = d.map(lambda record: _decode_record(record, name_to_features))
+    d = d.batch(batch_size, drop_remainder=drop_remainder)
 
     return d
 
@@ -849,11 +847,11 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
       train_op = optimization.create_optimizer(
           total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
 
-      output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+      output_spec = tf.estimator.EstimatorSpec(
           mode=mode,
           loss=total_loss,
           train_op=train_op,
-          scaffold_fn=scaffold_fn)
+          scaffold=scaffold_fn())
     elif mode == tf.estimator.ModeKeys.EVAL:
 
       def metric_fn(per_example_loss, label_ids, logits, is_real_example):
@@ -866,18 +864,17 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             "eval_loss": loss,
         }
 
-      eval_metrics = (metric_fn,
-                      [per_example_loss, label_ids, logits, is_real_example])
-      output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+      eval_metrics = metric_fn(per_example_loss, label_ids, logits, is_real_example)
+      output_spec = tf.estimator.EstimatorSpec(
           mode=mode,
           loss=total_loss,
-          eval_metrics=eval_metrics,
-          scaffold_fn=scaffold_fn)
+          eval_metric_ops=eval_metrics,
+          scaffold=scaffold_fn())
     else:
-      output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+      output_spec = tf.estimator.EstimatorSpec(
           mode=mode,
           predictions={"probabilities": probabilities},
-          scaffold_fn=scaffold_fn)
+          scaffold=scaffold_fn())
     return output_spec
 
   return model_fn
@@ -996,21 +993,11 @@ def main(_):
   tokenizer = tokenization.FullTokenizer(
       vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
 
-  tpu_cluster_resolver = None
-  if FLAGS.use_tpu and FLAGS.tpu_name:
-    tpu_cluster_resolver = tf.contrib.cluster_resolver.TPUClusterResolver(
-        FLAGS.tpu_name, zone=FLAGS.tpu_zone, project=FLAGS.gcp_project)
-
-  is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-  run_config = tf.contrib.tpu.RunConfig(
-      cluster=tpu_cluster_resolver,
-      master=FLAGS.master,
+  # Use standard RunConfig instead of TPU-specific one
+  run_config = tf.estimator.RunConfig(
       model_dir=FLAGS.output_dir,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps,
-      tpu_config=tf.contrib.tpu.TPUConfig(
-          iterations_per_loop=FLAGS.iterations_per_loop,
-          num_shards=FLAGS.num_tpu_cores,
-          per_host_input_for_training=is_per_host))
+      keep_checkpoint_max=5)
 
   train_examples = None
   num_train_steps = None
@@ -1028,18 +1015,13 @@ def main(_):
       learning_rate=FLAGS.learning_rate,
       num_train_steps=num_train_steps,
       num_warmup_steps=num_warmup_steps,
-      use_tpu=FLAGS.use_tpu,
-      use_one_hot_embeddings=FLAGS.use_tpu)
+      use_tpu=False,  # Force CPU/GPU mode
+      use_one_hot_embeddings=False)
 
-  # If TPU is not available, this will fall back to normal Estimator on CPU
-  # or GPU.
-  estimator = tf.contrib.tpu.TPUEstimator(
-      use_tpu=FLAGS.use_tpu,
+  # Use standard Estimator instead of TPUEstimator
+  estimator = tf.estimator.Estimator(
       model_fn=model_fn,
-      config=run_config,
-      train_batch_size=FLAGS.train_batch_size,
-      eval_batch_size=FLAGS.eval_batch_size,
-      predict_batch_size=FLAGS.predict_batch_size)
+      config=run_config)
 
   if FLAGS.do_train:
     train_file = os.path.join(FLAGS.output_dir, "train.tf_record")
@@ -1053,7 +1035,8 @@ def main(_):
         input_file=train_file,
         seq_length=FLAGS.max_seq_length,
         is_training=True,
-        drop_remainder=True)
+        drop_remainder=True,
+        batch_size=FLAGS.train_batch_size)
     estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
 
   if FLAGS.do_eval:
@@ -1091,7 +1074,8 @@ def main(_):
         input_file=eval_file,
         seq_length=FLAGS.max_seq_length,
         is_training=False,
-        drop_remainder=eval_drop_remainder)
+        drop_remainder=eval_drop_remainder,
+        batch_size=FLAGS.eval_batch_size)
 
     result = estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
 
@@ -1129,7 +1113,8 @@ def main(_):
         input_file=predict_file,
         seq_length=FLAGS.max_seq_length,
         is_training=False,
-        drop_remainder=predict_drop_remainder)
+        drop_remainder=predict_drop_remainder,
+        batch_size=FLAGS.predict_batch_size)
 
     result = estimator.predict(input_fn=predict_input_fn)
 
