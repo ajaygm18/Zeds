@@ -1,0 +1,34 @@
+# Ignore BERT pre-trained model (too large for GitHub)
+Codes/sentiment/chinese_L-12_H-768_A-12/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Model outputs
+Codes/sentiment/tmp/
+Codes/sentiment/*.zip
+
+# Stock prediction outputs
+Codes/stockPrice/*.png
+Codes/stockPrice/*.csv
+!Codes/stockPrice/data/*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
